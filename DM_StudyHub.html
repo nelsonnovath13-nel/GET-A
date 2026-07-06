@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discrete Mathematics — IAA A+ Study Hub</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  body { background: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #1e293b; }
+  ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 3px; }
+  .fade-in { animation: fadeInUp .4s ease both; }
+  @keyframes fadeInUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  .math { font-family: 'JetBrains Mono', monospace; background: #1e293b; padding: 2px 6px; border-radius: 4px; font-size:.9em; }
+  pre.code-block { background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px 16px; font-family:'JetBrains Mono',monospace; font-size:.85em; overflow-x:auto; line-height:1.7; }
+</style>
+<script>tailwind.config = { theme: { extend: { fontFamily: { mono: ['JetBrains Mono','monospace'] } } } };</script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-type="module">
+const { useState, useEffect, useCallback, Fragment } = React;
+
+// ── CURRICULUM DATA ──────────────────────────────────────────────────────────
+const TOPICS = [
+ {
+  id:'logic', title:'Propositional Logic & Predicates', ch:'Chapter 1', icon:'⊨',
+  grad:'from-purple-600 to-indigo-700', bg:'bg-purple-600',
+  desc:'The language of mathematics: propositions, connectives, quantifiers and logical reasoning.',
+  sections:[
+   {
+    id:'props', title:'1.1 Propositions and Connectives',
+    theory:[
+     '**Proposition**: a statement that is either TRUE or FALSE — never both, never neither. Examples: "2+2=4" (T), "Sky is green" (F). Questions or commands are NOT propositions.',
+     '**Negation (¬)**: ¬p flips the truth value. If p=T then ¬p=F, and vice versa.',
+     '**Conjunction (∧)**: p∧q is TRUE only when BOTH p AND q are TRUE. Think: both switches must be ON.',
+     '**Disjunction (∨)**: p∨q is TRUE when AT LEAST ONE is TRUE. FALSE only when both FALSE.',
+     '**Implication (→)**: p→q is FALSE only when p=TRUE and q=FALSE. "If it rains, I bring umbrella" — only broken when it rains and I don\'t bring one.',
+     '**Biconditional (↔)**: p↔q is TRUE when both sides have the SAME truth value (both T or both F).',
+     '**De Morgan\'s Laws**: ¬(p∧q) ≡ ¬p∨¬q and ¬(p∨q) ≡ ¬p∧¬q. "Break the bar, flip the operator."',
+    ],
+    facts:['¬: flips truth value','∧: TRUE only if both TRUE','∨: FALSE only if both FALSE','→: FALSE only if p=T and q=F','↔: TRUE when same value','De Morgan: ¬(p∧q)=¬p∨¬q'],
+    examples:[
+     { title:'Truth table for p → q',
+       prob:'Build the complete truth table for p → q.',
+       steps:['p=T, q=T: Promise made and kept → TRUE','p=T, q=F: Promise made but BROKEN → FALSE (only false case!)','p=F, q=T: Promise never triggered → TRUE (vacuously)','p=F, q=F: Promise never triggered → TRUE (vacuously)'],
+       ans:'p→q is FALSE only when p=T and q=F. All other 3 rows are TRUE.' },
+     { title:'Verify De Morgan\'s Law',
+       prob:'Show ¬(p∧q) ≡ ¬p∨¬q by truth table.',
+       steps:['(T,T): ¬(T∧T)=¬T=F; ¬T∨¬T=F∨F=F ✓','(T,F): ¬(T∧F)=¬F=T; ¬T∨¬F=F∨T=T ✓','(F,T): ¬(F∧T)=¬F=T; ¬F∨¬T=T∨F=T ✓','(F,F): ¬(F∧F)=¬F=T; ¬F∨¬F=T∨T=T ✓'],
+       ans:'Both columns identical — De Morgan\'s law verified.' },
+    ],
+    quiz:[
+     { q:'Which is a valid proposition?',opts:['"What is 2+2?"','"2+2=5"','"Please sit down"','"x+1=5"'],c:1,
+       exp:'"2+2=5" is a proposition (FALSE, but has a definite truth value). Questions and commands are not.' },
+     { q:'When is p → q FALSE?',opts:['p=F, q=T','p=T, q=F','Both FALSE','Both TRUE'],c:1,
+       exp:'p→q is FALSE ONLY when p=TRUE and q=FALSE. All other combinations are TRUE.' },
+     { q:'Evaluate (T∧F)∨(F→T)',opts:['TRUE','FALSE','Undefined','Variable'],c:0,
+       exp:'T∧F=F. F→T=TRUE (vacuously). F∨T=TRUE.' },
+     { q:'Simplify ¬(¬p∨q) using De Morgan.',opts:['p∧¬q','¬p∧q','p∨¬q','¬p∨¬q'],c:0,
+       exp:'De Morgan on outer: ¬(¬p∨q)=¬(¬p)∧¬q=p∧¬q.' },
+     { q:'What is the negation of "All cats are black"?',opts:['All cats are not black','No cats are black','At least one cat is NOT black','At least one cat is black'],c:2,
+       exp:'Negation of ∀x P(x) is ∃x ¬P(x) — just one counterexample needed.' },
+    ]
+   },
+   {
+    id:'pred', title:'1.4 Predicates and Quantifiers',
+    theory:[
+     '**Predicate P(x)**: A statement with variable x that becomes a proposition when x is given a value. P(x)="x>3" — P(5)=TRUE, P(2)=FALSE.',
+     '**Universal quantifier ∀x P(x)**: "For ALL x, P(x) is true." To prove it FALSE → find ONE counterexample.',
+     '**Existential quantifier ∃x P(x)**: "There EXISTS at least one x where P(x) is true." To prove it TRUE → find ONE example.',
+     '**Negation rules (EXAM CRITICAL)**: ¬(∀x P(x)) ≡ ∃x ¬P(x). ¬(∃x P(x)) ≡ ∀x ¬P(x).',
+     '**Translation guide**: "All A are B" → ∀x(A(x)→B(x)). "Some A are B" → ∃x(A(x)∧B(x)). "No A are B" → ∀x(A(x)→¬B(x)).',
+    ],
+    facts:['∀: need ALL instances to be true','∃: need just ONE true instance','¬∀ → ∃¬ (negate flip)','¬∃ → ∀¬ (negate flip)','"All A are B" → ∀x(A(x)→B(x))','"Some A are B" → ∃x(A(x)∧B(x))'],
+    examples:[
+     { title:'Exam Q: Translating English (from your Group Assignment)',
+       prob:'Let P(x)="x is perfect", F(x)="x is your friend". Translate: (a) No one is perfect (b) Not everyone is perfect (c) All your friends are perfect (d) At least one friend is perfect.',
+       steps:['(a) "No one is perfect" = ∀x ¬P(x)','(b) "Not everyone is perfect" = ¬∀x P(x) ≡ ∃x ¬P(x)','(c) "All your friends are perfect" = ∀x(F(x)→P(x))','(d) "At least one friend is perfect" = ∃x(F(x)∧P(x))'],
+       ans:'(a) ∀x¬P(x)  (b) ¬∀xP(x)  (c) ∀x(F(x)→P(x))  (d) ∃x(F(x)∧P(x))' },
+     { title:'Exam Q: Negating a proposition',
+       prob:'Negate "Vandana\'s smartphone has at least 32GB of memory" and express in simple English.',
+       steps:['Original: memory ≥ 32GB','NOT(memory ≥ 32) = memory < 32'],
+       ans:'"Vandana\'s smartphone has LESS THAN 32GB of memory."' },
+    ],
+    quiz:[
+     { q:'What is ¬(∀x P(x)) equivalent to?',opts:['∀x¬P(x)','∃xP(x)','∃x¬P(x)','¬∃xP(x)'],c:2,
+       exp:'¬(∀xP(x)) ≡ ∃x¬P(x). To disprove "everyone is tall", just find one short person.' },
+     { q:'Express "Some students like maths" using S(x)="student", M(x)="likes maths".',opts:['∀x(S(x)→M(x))','∃x(S(x)∧M(x))','∃x(S(x)→M(x))','∀x(S(x)∧M(x))'],c:1,
+       exp:'"Some" uses ∃ with ∧. Need: there exists an x who IS a student AND likes maths.' },
+     { q:'¬(∃xP(x)) is equivalent to:',opts:['∃x¬P(x)','∀x¬P(x)','∀xP(x)','¬∀xP(x)'],c:1,
+       exp:'¬(∃xP(x)) ≡ ∀x¬P(x). "Nobody is happy" = "Everyone is not happy".' },
+     { q:'Negation of "Vandana\'s phone has at least 32GB":',opts:['At most 32GB','Exactly 32GB','Less than 32GB','More than 32GB'],c:2,
+       exp:'NOT(≥32) = <32. "At least" means ≥. Negation is strictly <.' },
+    ]
+   }
+  ]
+ },
+ {
+  id:'numth', title:'Number Theory & Cryptography', ch:'Chapter 4', icon:'🔢',
+  grad:'from-blue-600 to-cyan-700', bg:'bg-blue-600',
+  desc:'Divisibility, modular arithmetic, GCD, base conversion, and cryptography.',
+  sections:[
+   {
+    id:'div', title:'4.1 Divisibility & Modular Arithmetic',
+    theory:[
+     '**Divisibility**: a|b (a divides b) if ∃ integer c: b=ac. Example: 3|12 because 12=3×4.',
+     '**Division Algorithm**: For integer a, positive d: a=dq+r where 0≤r<d. RULE: r is ALWAYS non-negative! For negative a, round q DOWN (more negative).',
+     '**Notation**: q = a div d (quotient), r = a mod d (remainder).',
+     '**Congruence**: a≡b(mod m) means m|(a−b), equivalently a and b have the same remainder mod m.',
+     '**Modular arithmetic**: (a+b)mod m = ((a mod m)+(b mod m)) mod m. Works for multiplication too. Reduce EARLY and OFTEN.',
+    ],
+    facts:['a|b → b=ac for some integer c','a=dq+r, ALWAYS 0≤r<d','For negative a: round q DOWN','a≡b(mod m) ⟺ m|(a−b)','(a×b)mod m = ((a mod m)×(b mod m)) mod m','Reduce mod m at every step!'],
+    examples:[
+     { title:'Division with positive number',
+       prob:'Find quotient and remainder: 19 ÷ 7',
+       steps:['19 = 7q + r, need 0≤r<7','Try q=2: 7×2=14, r=19−14=5','Check: 0≤5<7 ✓'],
+       ans:'q = 2 (19 div 7), r = 5 (19 mod 7)' },
+     { title:'Division with NEGATIVE number (exam trap!)',
+       prob:'Find q and r when −111 is divided by 11.',
+       steps:['Need: −111 = 11q + r, 0≤r<11','−111÷11 = −10.09... → round DOWN → q = −11','11×(−11) = −121','r = −111−(−121) = −111+121 = 10','Check: 0≤10<11 ✓  and  11×(−11)+10=−111 ✓'],
+       ans:'q = −11, r = 10. NEVER get a negative remainder!' },
+     { title:'Clock problem',
+       prob:'What time does a 12-hour clock read 80 hours after 11:00?',
+       steps:['(11+80) mod 12 = 91 mod 12','12×7=84, 91−84=7'],
+       ans:'7:00' },
+     { title:'Modular calculation trick',
+       prob:'Find (32³ mod 13)² mod 11.',
+       steps:['32 mod 13 = 6  (13×2=26, 32−26=6)','6³ = 216','216 mod 13 = 8  (13×16=208, 216−208=8)','8² = 64','64 mod 11 = 9  (11×5=55, 64−55=9)'],
+       ans:'9  (Key trick: reduce mod m BEFORE powering — keeps numbers small!)' },
+    ],
+    quiz:[
+     { q:'What is 101 mod 11?',opts:['1','2','9','11'],c:1,exp:'101=11×9+2. So 101 mod 11=2.' },
+     { q:'Remainder when −11 is divided by 3?',opts:['−2','−1','1','2'],c:2,exp:'-11÷3=−3.67→q=−4. r=−11−(3×(−4))=−11+12=1.' },
+     { q:'What does a 12-hr clock read 40 hours BEFORE 12:00?',opts:['4:00','8:00','10:00','2:00'],c:1,exp:'(12−40) mod 12 = −28 mod 12. −28=12×(−3)+8 → r=8. Clock reads 8:00.' },
+     { q:'17 ≡ 5 (mod 6) because:',opts:['17=5','6|(17+5)','6|(17−5)','17 mod 5=6'],c:2,exp:'a≡b(mod m) means m|(a−b). 17−5=12, 6|12 ✓.' },
+     { q:'Find a div m and a mod m for a=10299, m=999.',opts:['q=10, r=309','q=11, r=210','q=10, r=209','q=9, r=308'],c:0,exp:'10299÷999=10.31→q=10. 999×10=9990. r=10299−9990=309.' },
+     { q:'Find (133 mod 23 + 261 mod 23) mod 23.',opts:['1','3','8','15'],c:1,exp:'133 mod 23=18 (23×5=115). 261 mod 23=8 (23×11=253). 18+8=26. 26 mod 23=3.' },
+    ]
+   },
+   {
+    id:'base', title:'4.2 Integer Representations (Base Conversion)',
+    theory:[
+     '**Base-b expansion**: n = aₖbᵏ+…+a₁b+a₀ where 0≤aᵢ<b. Written (aₖ…a₀)ᵦ.',
+     '**Common bases**: Binary (2) — digits 0,1. Octal (8) — digits 0-7. Hex (16) — 0-9,A=10,B=11,C=12,D=13,E=14,F=15.',
+     '**Decimal → base b**: Divide by b repeatedly. Record remainders. Read BOTTOM TO TOP.',
+     '**Binary ↔ Octal**: 1 octal digit = exactly 3 binary digits. Group from RIGHT, pad left with zeros if needed.',
+     '**Binary ↔ Hex**: 1 hex digit = exactly 4 binary digits. Group from RIGHT.',
+    ],
+    facts:['Hex: A=10,B=11,C=12,D=13,E=14,F=15','Convert to base b: divide repeatedly, read remainders bottom-to-top','Binary→Octal: group 3 bits from RIGHT','Binary→Hex: group 4 bits from RIGHT','Always pad on the LEFT','Powers of 2: 1,2,4,8,16,32,64,128,256,512,1024'],
+    examples:[
+     { title:'Binary to Decimal',
+       prob:'Convert (101011111)₂ to decimal.',
+       steps:['Place values (right to left): 2⁸ 2⁷ 2⁶ 2⁵ 2⁴ 2³ 2² 2¹ 2⁰','Digits:  1  0  1  0  1  1  1  1  1','256+0+64+0+16+8+4+2+1 = 351'],
+       ans:'(101011111)₂ = 351' },
+     { title:'Decimal to Octal',
+       prob:'Convert 12345₁₀ to octal.',
+       steps:['12345 ÷ 8 = 1543 r 1','1543 ÷ 8 = 192 r 7','192 ÷ 8 = 24 r 0','24 ÷ 8 = 3 r 0','3 ÷ 8 = 0 r 3','Read remainders BOTTOM TO TOP: 3,0,0,7,1'],
+       ans:'12345₁₀ = (30071)₈' },
+     { title:'Binary ↔ Octal/Hex quick trick',
+       prob:'Convert (572)₈ to binary and (A8D)₁₆ to binary.',
+       steps:['(572)₈: 5→101, 7→111, 2→010  →  (101111010)₂','(A8D)₁₆: A=1010, 8=1000, D=1101  →  (101010001101)₂'],
+       ans:'(572)₈=(101111010)₂  |  (A8D)₁₆=(101010001101)₂' },
+    ],
+    quiz:[
+     { q:'Convert (1604)₈ to binary.',opts:['(1110000100)₂','(1110010100)₂','(110000100)₂','(11100001)₂'],c:0,exp:'1→001,6→110,0→000,4→100. Join: 001110000100 → drop leading 0s → 1110000100.' },
+     { q:'Convert (11110111)₂ to octal.',opts:['(367)₈','(267)₈','(377)₈','(467)₈'],c:0,exp:'Group 3 from right: 011 110 111 → pad leftmost to 011. 3,6,7 → (367)₈.' },
+     { q:'What decimal is (2AE0B)₁₆?',opts:['165627','175627','165237','175267'],c:1,exp:'2×65536+10×4096+14×256+0×16+11=131072+40960+3584+11=175627.' },
+     { q:'What hex digit is decimal 14?',opts:['C','D','E','F'],c:2,exp:'A=10,B=11,C=12,D=13,E=14. So 14=E.' },
+     { q:'Convert (101010101010)₂ to octal.',opts:['(5252)₈','(5242)₈','(4252)₈','(5352)₈'],c:0,exp:'Group 3 from right: 101 010 101 010 → 5,2,5,2 → (5252)₈.' },
+    ]
+   },
+   {
+    id:'gcd', title:'4.3 Primes, GCD & LCM',
+    theory:[
+     '**Prime**: integer p>1 whose only positive factors are 1 and p. Note: 1 is NOT prime!',
+     '**GCD using prime factorizations**: Write both numbers as products of primes (same primes, 0 exponent if missing). GCD = product with MINIMUM exponents.',
+     '**LCM using prime factorizations**: LCM = product with MAXIMUM exponents.',
+     '**Identity**: gcd(a,b) × lcm(a,b) = a × b (shortcut!).',
+     '**Euclidean Algorithm**: gcd(a,b) = gcd(b, a mod b). Divide repeatedly until remainder=0. Last NON-ZERO remainder = gcd.',
+     '**Bézout\'s Theorem**: gcd(a,b) = sa + tb for integers s,t. Find by back-substituting Euclidean steps.',
+    ],
+    facts:['1 is NOT prime. 2 is the ONLY even prime.','GCD: take MINIMUM prime exponents','LCM: take MAXIMUM prime exponents','gcd×lcm = a×b','Euclidean: last NON-ZERO remainder','Always VERIFY Bézout: sa+tb must equal gcd'],
+    examples:[
+     { title:'GCD by prime factorization',
+       prob:'Find gcd(3⁷·5³·7³, 2¹¹·3⁵·5⁹).',
+       steps:['Prime 2: min(0,11)=0','Prime 3: min(7,5)=5','Prime 5: min(3,9)=3','Prime 7: min(3,0)=0','gcd = 3⁵×5³ = 243×125'],
+       ans:'gcd = 30375' },
+     { title:'Euclidean Algorithm',
+       prob:'Find gcd(414, 662).',
+       steps:['662 = 414×1 + 248','414 = 248×1 + 166','248 = 166×1 + 82','166 = 82×2 + 2','82 = 2×41 + 0  ← STOP','Last non-zero remainder = 2'],
+       ans:'gcd(414,662) = 2' },
+     { title:'Bézout Coefficients',
+       prob:'Express gcd(414,662)=2 as 2=s(414)+t(662).',
+       steps:['From step 4: 2 = 166 − 82×2','Sub 82=248−166: 2 = 166−(248−166)×2 = 3×166−2×248','Sub 166=414−248: 2 = 3(414−248)−2×248 = 3×414−5×248','Sub 248=662−414: 2 = 3×414−5(662−414) = 8×414−5×662','VERIFY: 8×414−5×662 = 3312−3310 = 2 ✓'],
+       ans:'s=8, t=−5. Bézout: 2 = 8(414)+(−5)(662)' },
+    ],
+    quiz:[
+     { q:'gcd(12,18) using Euclidean Algorithm.',opts:['2','3','6','12'],c:2,exp:'18=12×1+6. 12=6×2+0. Last non-zero=6.' },
+     { q:'gcd(111,201).',opts:['1','3','9','6'],c:1,exp:'201=111×1+90, 111=90×1+21, 90=21×4+6, 21=6×3+3, 6=3×2+0. gcd=3.' },
+     { q:'lcm(2³·3⁵·7², 2⁴·3³).',opts:['2⁴·3⁵·7²','2³·3³','2·3·7','2⁴·3⁵'],c:0,exp:'LCM takes MAX exponents. 2:max(3,4)=4. 3:max(5,3)=5. 7:max(2,0)=2. lcm=2⁴·3⁵·7².' },
+     { q:'gcd(11·13·17, 2⁹·3⁷·5⁵·7³).',opts:['1','11','17','13'],c:0,exp:'No common prime factors (11,13,17 vs 2,3,5,7). gcd=1 (coprime).' },
+     { q:'Bézout: gcd(12,18)=6=12s+18t. Find s,t.',opts:['s=1,t=−1/3','s=−1,t=1','s=3,t=−1','s=2,t=0'],c:1,exp:'From Euclidean: 6=18−12×1. So 6=18(1)+12(−1). s=−1,t=1. Verify: 12(−1)+18(1)=−12+18=6 ✓.' },
+    ]
+   },
+   {
+    id:'congruences', title:'4.4 Solving Congruences & CRT',
+    theory:[
+     '**Modular inverse**: ā is the inverse of a mod m when a·ā ≡ 1 (mod m). Exists if and only if gcd(a,m)=1.',
+     '**Finding inverse**: Use Extended Euclidean. Find s,t with sa+tm=1. Then s mod m is the inverse.',
+     '**Linear congruence** ax≡b(mod m): Multiply both sides by the inverse of a. x≡ā·b(mod m).',
+     '**CRT (Chinese Remainder Theorem)**: System x≡a₁(mod m₁), …, x≡aₙ(mod mₙ) has unique solution mod M=m₁…mₙ when moduli are pairwise coprime.',
+     '**CRT method**: M=∏mᵢ, Mᵢ=M/mᵢ, yᵢ=inverse of Mᵢ mod mᵢ. Solution: x ≡ Σ(aᵢMᵢyᵢ) (mod M).',
+    ],
+    facts:['Inverse exists ⟺ gcd(a,m)=1','Find inverse via Extended Euclidean','ax≡b: x≡(inverse of a)×b (mod m)','CRT: moduli must be pairwise coprime','Always VERIFY by substituting back','CRT solution: x = Σ(aᵢMᵢyᵢ) mod M'],
+    examples:[
+     { title:'Finding a modular inverse',
+       prob:'Find the inverse of 3 mod 7.',
+       steps:['gcd(3,7)=1 ✓ (7 is prime)','Euclidean: 7=3×2+1 → 1=7−3×2','So (−2)·3+1·7=1 → s=−2','−2 mod 7 = 5 (−2+7=5)','CHECK: 3×5=15, 15 mod 7=1 ✓'],
+       ans:'Inverse of 3 mod 7 = 5' },
+     { title:'Solving linear congruence',
+       prob:'Solve 3x ≡ 4 (mod 7).',
+       steps:['Inverse of 3 mod 7 = 5 (from above)','Multiply both sides by 5: 15x ≡ 20 (mod 7)','15 mod 7=1, 20 mod 7=6','x ≡ 6 (mod 7)','VERIFY: 3×6=18, 18 mod 7=4 ✓'],
+       ans:'x ≡ 6 (mod 7)' },
+     { title:'Chinese Remainder Theorem',
+       prob:'Solve: x≡2(mod3), x≡3(mod5), x≡2(mod7).',
+       steps:['M=3×5×7=105','M₁=35: 35≡2(mod3), 2×2=4≡1 → y₁=2','M₂=21: 21≡1(mod5) → y₂=1','M₃=15: 15≡1(mod7) → y₃=1','x=2×35×2+3×21×1+2×15×1=140+63+30=233','233 mod 105=23','CHECK: 23mod3=2✓ 23mod5=3✓ 23mod7=2✓'],
+       ans:'x ≡ 23 (mod 105)' },
+    ],
+    quiz:[
+     { q:'Inverse of 5 mod 11?',opts:['2','3','7','9'],c:3,exp:'5×9=45, 45 mod 11=1 (11×4=44) ✓. Inverse=9.' },
+     { q:'Solve 4x≡5(mod9). First: does solution exist?',opts:['x≡8(mod9)','No solution','x≡5(mod9)','x≡2(mod9)'],c:0,exp:'gcd(4,9)=1 ✓. Inverse of 4 mod 9: 4×7=28≡1 → inverse=7. x≡7×5=35≡8(mod9). Verify:4×8=32≡5✓.' },
+     { q:'CRT requires moduli to be:',opts:['All prime','Pairwise coprime','All > 10','All equal'],c:1,exp:'Pairwise coprime — every PAIR must have gcd=1. They need not be individually prime.' },
+    ]
+   },
+   {
+    id:'crypto', title:'4.6 Cryptography',
+    theory:[
+     '**Setup**: Replace A-Z with 0-25 (A=0,B=1,…,Z=25).',
+     '**Caesar cipher**: f(p)=(p+3) mod 26. Decrypt: f⁻¹(p)=(p−3) mod 26.',
+     '**Shift cipher**: f(p)=(p+k) mod 26. Decrypt: f⁻¹(p)=(p−k) mod 26. Add 26 if result goes negative.',
+     '**Affine cipher**: f(p)=(ap+b) mod 26. REQUIRES gcd(a,26)=1. Decrypt: f⁻¹(p)=ā(p−b) mod 26.',
+     '**RSA**: Public key (n,e), private key d. Encrypt: C=Pᵉ mod n. Decrypt: P=Cᵈ mod n.',
+     '**RSA key generation**: n=p×q. φ(n)=(p−1)(q−1). Choose e: gcd(e,φ(n))=1. Find d: e·d≡1 (mod φ(n)).',
+    ],
+    facts:['A=0,B=1,…,Z=25','Caesar: shift 3. Shift cipher: shift k','Affine: f(p)=(ap+b)mod26, need gcd(a,26)=1','RSA: C=Pᵉmod n, P=Cᵈmod n','RSA: φ(n)=(p−1)(q−1) NOT n−1!','Decrypt shift: subtract k, add 26 if negative'],
+    examples:[
+     { title:'Caesar cipher encryption',
+       prob:'Encrypt "MEET YOU IN THE PARK" (Caesar, k=3).',
+       steps:['M=12→15=P, E=4→7=H, E=4→7=H, T=19→22=W','Y=24→1=B, O=14→17=R, U=20→23=X','I=8→11=L, N=13→16=Q','T=19→22=W, H=7→10=K, E=4→7=H','P=15→18=S, A=0→3=D, R=17→20=U, K=10→13=N'],
+       ans:'PHHW BRX LQ WKH SDUN' },
+     { title:'Shift cipher decryption',
+       prob:'Decrypt "LEWLYPLUJL PZ H NYLHA ALHJOLY" (k=7).',
+       steps:['L=11→11−7=4=E','E=4→4−7=−3+26=23=X','W=22→22−7=15=P','...working through all letters...','Result spells a famous saying'],
+       ans:'EXPERIENCE IS A GREAT TEACHER' },
+     { title:'Encrypt "STOP POLLUTION" with f(p)=(p+4) mod 26',
+       prob:'Find the ciphertext.',
+       steps:['S=18→22=W, T=19→23=X, O=14→18=S, P=15→19=T','P=15→19=T, O=14→18=S, L=11→15=P, L=11→15=P','U=20→24=Y, T=19→23=X, I=8→12=M, O=14→18=S, N=13→17=R'],
+       ans:'WXST TSPPYXMSR' },
+     { title:'RSA encryption',
+       prob:'Set up RSA with p=3, q=11. Encrypt P=5.',
+       steps:['n=3×11=33, φ(n)=(3−1)(11−1)=20','Choose e=7: gcd(7,20)=1 ✓','Find d: 7d≡1(mod20). 7×3=21≡1 → d=3','Public key (33,7). Private key d=3.','C=5⁷ mod 33: 5²=25, 5⁴≡31, 5⁶≡16, 5⁷≡80≡14(mod33)','Verify: 14³ mod 33=5 ✓'],
+       ans:'C=14 (encrypt P=5 → C=14)' },
+    ],
+    quiz:[
+     { q:'Caesar cipher: M(=12) encrypts to?',opts:['O','N','P','L'],c:2,exp:'f(12)=(12+3)mod26=15. Letter 15=P.' },
+     { q:'Encrypt "STOP" with f(p)=(p+4)mod26.',opts:['WXST','VWRS','XYTU','WYST'],c:0,exp:'S=18→22=W, T=19→23=X, O=14→18=S, P=15→19=T. WXST.' },
+     { q:'RSA with p=5,q=11: what is φ(n)?',opts:['54','40','55','44'],c:1,exp:'φ(n)=(p−1)(q−1)=(4)(10)=40. NEVER use n−1=54 for RSA!' },
+     { q:'Decrypt letter C(=2) with shift k=10.',opts:['S','M','R','L'],c:0,exp:'f⁻¹(2)=(2−10)mod26=−8mod26=18=S.' },
+     { q:'Affine cipher f(p)=(7p+3)mod26 is valid because:',opts:['7 is prime','gcd(7,26)=1','3<13','p is even'],c:1,exp:'Affine requires gcd(a,26)=1. gcd(7,26)=1 ✓ (26=2×13, 7 not divisible by 2 or 13).' },
+     { q:'Decrypt CEBBOXNOB XYG (shift k=10).',opts:['SURRENDER NOW','EXPERIENCE IS','WELCOME HOME','COMPUTER LAB'],c:0,exp:'Subtract 10 from each letter value (add 26 if negative). C=2→S, E=4→U, B=1→R, B→R, O→E, X→N, N→D, O→E, B→R, X→N, Y→O, G→W. SURRENDER NOW.' },
+    ]
+   },
+  ]
+ },
+ {
+  id:'graphs', title:'Graph Theory', ch:'Chapter 10', icon:'🕸️',
+  grad:'from-green-600 to-teal-700', bg:'bg-green-600',
+  desc:'Graph models, terminology, applications, Euler and Hamilton paths.',
+  sections:[
+   {
+    id:'gmod', title:'10.1 Graphs and Graph Models',
+    theory:[
+     '**Graph G=(V,E)**: V=set of vertices (nodes), E=set of edges (links). An edge connects two vertices.',
+     '**Simple graph**: No loops (edge from v to itself), no multiple edges. **Multigraph**: multiple edges allowed. **Pseudograph**: loops + multiple edges.',
+     '**Directed graph (digraph)**: Edges have direction. **Undirected graph**: Edges have no direction.',
+     '**Degree**: deg(v) = number of edges incident to v. **Handshaking Lemma**: sum of all degrees = 2|E|.',
+     '**Social network model**: Vertices=people, edges=relationships. Analyzes information/disease spread.',
+     '**Communication network**: Vertices=devices, edges=links. Designs fault-tolerant networks.',
+     '**Information network**: Vertices=web pages, edges=hyperlinks. Google PageRank uses this.',
+     '**Transportation network**: Vertices=cities, edges=routes. Finds shortest/cheapest paths.',
+     '**Biological network**: Vertices=species/genes, edges=interactions. Food webs, gene networks.',
+    ],
+    facts:['G=(V,E): vertices + edges','Simple graph: no loops, no multiple edges','Handshaking Lemma: Σdeg(v)=2|E|','Degree of v = # edges at v','Directed graph has arrows on edges','5 models: social, comm, info, transport, bio'],
+    examples:[
+     { title:'Group Assignment Question 1: Explain four graph models',
+       prob:'Name and explain four real-world graph models, giving the vertices, edges, and a real example for each.',
+       steps:[
+        '1. Social networks: Vertices=people, Edges=friendships. Example: Facebook — models influence and information spread.',
+        '2. Communication networks: Vertices=routers/computers, Edges=cables/links. Example: the Internet — designs reliable data paths.',
+        '3. Information networks: Vertices=web pages, Edges=hyperlinks. Example: World Wide Web — Google PageRank ranks by links.',
+        '4. Transportation networks: Vertices=cities/airports, Edges=roads/flights. Example: airline routes — finds shortest path.',
+       ],
+       ans:'Any 4 of the 5 models, each with: what vertices are, what edges are, one real example.' },
+     { title:'Applying the Handshaking Lemma',
+       prob:'A graph has 4 vertices: A connects to B,C,D; B connects to C. Find all degrees and number of edges.',
+       steps:['deg(A)=3, deg(B)=2, deg(C)=2, deg(D)=1','Sum = 3+2+2+1 = 8','|E| = 8÷2 = 4 edges'],
+       ans:'deg: A=3,B=2,C=2,D=1. Total edges=4.' },
+    ],
+    quiz:[
+     { q:'In an Internet communication model, vertices represent:',opts:['websites','computers/routers','data packets','users'],c:1,exp:'Communication network: vertices=devices (computers, routers), edges=communication links.' },
+     { q:'Handshaking Lemma states:',opts:['Every graph has even vertices','Sum of degrees = 2×edges','All vertices same degree','Edges = vertices'],c:1,exp:'Σdeg(v)=2|E|. Each edge contributes 1 to each endpoint\'s degree.' },
+     { q:'Which model uses vertices for web pages?',opts:['Social','Communication','Information','Biological'],c:2,exp:'Information network: vertices=pages, edges=hyperlinks. Google PageRank is built on this.' },
+     { q:'A simple graph has:',opts:['Only one vertex','No loops, no multiple edges','All equal degrees','Only directed edges'],c:1,exp:'Simple graph: no loops (self-edges) and no multiple edges between same pair.' },
+     { q:'A graph has 5 vertices with degrees 3,3,2,2,2. How many edges?',opts:['6','12','12','10'],c:0,exp:'Sum of degrees=3+3+2+2+2=12. Edges=12÷2=6.' },
+    ]
+   },
+  ]
+ },
+ {
+  id:'bool', title:'Boolean Algebra & Logic Circuits', ch:'Chapter 12', icon:'⚡',
+  grad:'from-orange-600 to-red-700', bg:'bg-orange-600',
+  desc:'Boolean expressions, logic gates, circuit design and K-map minimization.',
+  sections:[
+   {
+    id:'bfunc', title:'12.1 Boolean Functions',
+    theory:[
+     '**Boolean algebra**: Works with B={0,1}. 0=FALSE/OFF, 1=TRUE/ON.',
+     '**Complement (NOT)**: 0̄=1, 1̄=0. Bar over a variable or expression.',
+     '**Boolean sum (OR, +)**: 1+1=1, 1+0=1, 0+1=1, 0+0=0. FALSE only when BOTH are 0.',
+     '**Boolean product (AND, ·)**: 1·1=1, 1·0=0, 0·1=0, 0·0=0. TRUE only when BOTH are 1.',
+     '**IMPORTANT**: Boolean 1+1=1, NOT 2! Order: NOT first, then AND, then OR.',
+     '**Boolean function** F:Bⁿ→B: assigns 0 or 1 to every input combination. With n variables → 2ⁿ rows in truth table.',
+    ],
+    facts:['NOT: 0̄=1, 1̄=0','OR (+): 0 only when both 0','AND (·): 1 only when both 1','Boolean 1+1=1 (NOT 2!)','Order: NOT→AND→OR','n variables → 2ⁿ rows'],
+    examples:[
+     { title:'Evaluate Boolean expression',
+       prob:'Show that (1̄·0̄)+(1·0̄)=1.',
+       steps:['Complements: 1̄=0, 0̄=1','Substitute: (0·1)+(1·1)','Products: 0·1=0, 1·1=1','Sum: 0+1=1 ✓'],
+       ans:'(1̄·0̄)+(1·0̄)=0+1=1 ✓' },
+     { title:'Translate to propositional logic (Tutorial Q2)',
+       prob:'Translate (1̄·0̄)+(1·0̄)=1 to propositional equivalence.',
+       steps:['Replace: 0→F,1→T,·→∧,+→∨,bar→¬,=→≡','1̄→¬T, 0̄→¬F, 1(right)→T','(¬T∧¬F)∨(T∧¬F)≡T'],
+       ans:'(¬T∧¬F)∨(T∧¬F) ≡ T' },
+     { title:'Find Boolean values (Tutorial Q3)',
+       prob:'Find x satisfying: (a) x·1=0, (b) x+x=0, (c) x·1=x.',
+       steps:['(a) x·1=x (Identity law) → x=0 only','(b) x+x=x (Idempotent law) → x=0 only','(c) x·1=x is ALWAYS true (both x=0 and x=1 work)'],
+       ans:'(a) x=0 only  (b) x=0 only  (c) ALL x (both 0 and 1)' },
+    ],
+    quiz:[
+     { q:'What is 1+1 in Boolean algebra?',opts:['2','0','1','Undefined'],c:2,exp:'Boolean + is OR. 1 OR 1=1. NEVER 2!' },
+     { q:'Evaluate (x̄·1)+(x·0) where x=1.',opts:['0','1','x','x̄'],c:0,exp:'x=1: x̄=0. First:0·1=0. Second:1·0=0. Sum:0+0=0.' },
+     { q:'How many rows in a truth table for 3 variables?',opts:['3','6','8','9'],c:2,exp:'2³=8 rows.' },
+     { q:'What values satisfy x·x̄=0?',opts:['x=0 only','x=1 only','Both 0 and 1','Neither'],c:2,exp:'x·x̄=0 is the Zero Property — true for ALL x.' },
+     { q:'Translate 1·0+(0+1)=0 to propositional logic.',opts:['(T∧F)∨(F∨T)≡F','(T∧F)∧(F∨T)≡F','(T∨F)∧(F∧T)≡F','(T∧F)∨(F∨T)≡T'],c:0,exp:'·→∧,+→∨,0→F,1→T,=→≡: (T∧F)∨(F∨T)≡F.' },
+    ]
+   },
+   {
+    id:'brepr', title:'12.2 Boolean Representations & Identities',
+    theory:[
+     '**Literal**: a variable or its complement (x or x̄).',
+     '**Minterm**: product of literals — one per variable — equals 1 for EXACTLY ONE input row. Use x (plain) where that row has 1; use x̄ (complement) where that row has 0.',
+     '**SOP (Sum-of-Products)**: Sum of all minterms where F=1. Every Boolean function has a unique SOP.',
+     '**Key identities** — Double complement: x̄̄=x. Idempotent: x+x=x, x·x=x. Identity: x+0=x, x·1=x. Domination: x+1=1, x·0=0. Complement: x+x̄=1, x·x̄=0.',
+     '**De Morgan**: (x·y)̄=x̄+ȳ and (x+y)̄=x̄·ȳ. "Break the bar, flip the operator."',
+     '**Absorption**: x+xy=x, x(x+y)=x.',
+     '**Duality**: Swap every ·↔+ and 0↔1 (variables unchanged). Every identity has a dual that is also true.',
+    ],
+    facts:['Minterm: use x where bit=1, x̄ where bit=0','SOP: sum minterms where F=1','De Morgan: (xy)̄=x̄+ȳ (break bar, flip op)','Absorption: x+xy=x','Duality: swap ·↔+, 0↔1, NOT variables','Double complement: x̄̄=x'],
+    examples:[
+     { title:'SOP expansion',
+       prob:'Find SOP of F(x,y)=x̄+y.',
+       steps:['Truth table: (1,1)→0+1=1, (1,0)→0+0=0, (0,1)→1+1=1, (0,0)→1+0=1','F=1 at (1,1),(0,1),(0,0)','(1,1)→minterm xy, (0,1)→minterm x̄y, (0,0)→minterm x̄ȳ','SOP = xy+x̄y+x̄ȳ'],
+       ans:'F(x,y) = xy+x̄y+x̄ȳ' },
+     { title:'Duality (Tutorial Q4)',
+       prob:'Find duals of: (a)x+y, (b)x̄ȳ, (c)xyz+x̄ȳz̄, (d)xz̄+x·0+x̄·1.',
+       steps:['(a) x+y: swap + for · → xy','(b) x̄ȳ (product): swap · for + → x̄+ȳ','(c) xyz+x̄ȳz̄: swap ·↔+ → (x+y+z)(x̄+ȳ+z̄)','(d) xz̄+x·0+x̄·1: swap ·↔+,0↔1 → (x+z̄)(x+1)(x̄+0)'],
+       ans:'(a)xy  (b)x̄+ȳ  (c)(x+y+z)(x̄+ȳ+z̄)  (d)(x+z̄)(x+1)(x̄+0)' },
+     { title:'Simplify using identities',
+       prob:'Simplify: xz̄+x·0+x̄·1.',
+       steps:['x·0=0 (Domination)','x̄·1=x̄ (Identity)','Expression = xz̄+0+x̄ = xz̄+x̄','x̄+xz̄ = (x̄+x)(x̄+z̄) = 1·(x̄+z̄) = x̄+z̄ (Distributive+Complement)'],
+       ans:'xz̄+x·0+x̄·1 = x̄+z̄' },
+    ],
+    quiz:[
+     { q:'Minterm for (x=1, y=0, z=1)?',opts:['xyz','xȳz','x̄yz','xȳz̄'],c:1,exp:'x=1→x plain, y=0→ȳ complement, z=1→z plain. Minterm=xȳz.' },
+     { q:'SOP for F(x,y)=ȳ (y complement)?',opts:['xȳ+x̄y','xȳ+x̄ȳ','xy+xȳ','ȳ alone'],c:1,exp:'F=1 when y=0: at (x=1,y=0)→xȳ and (x=0,y=0)→x̄ȳ. SOP=xȳ+x̄ȳ.' },
+     { q:'Apply De Morgan to (x̄+ȳ)̄.',opts:['x+y','x̄·ȳ','x·y','x̄+ȳ'],c:2,exp:'(x̄+ȳ)̄=x̄̄·ȳ̄=x·y. Double negatives cancel.' },
+     { q:'Dual of (x+y)(x̄+z)?',opts:['xy+x̄z','(xy)(x̄z)','x̄ȳ+xz̄','xy·x̄z'],c:0,exp:'Swap ·↔+: (x+y)(x̄+z) → xy+x̄z.' },
+     { q:'Simplify x+xy using Absorption.',opts:['xy','x','y','x+y'],c:1,exp:'Absorption law: x+xy=x. xy is "absorbed" because x alone guarantees x+xy=x.' },
+    ]
+   },
+   {
+    id:'gates', title:'12.3 Logic Gates (NOT, AND, OR, NAND, NOR, XOR)',
+    theory:[
+     '**NOT gate (Inverter)**: output=x̄. One input. Symbol: triangle with circle.',
+     '**OR gate**: output=x+y. TRUE when at least one input is 1.',
+     '**AND gate**: output=xy. TRUE only when both inputs are 1.',
+     '**NAND gate**: output=(xy)̄=x̄+ȳ (De Morgan). AND followed by NOT.',
+     '**NOR gate**: output=(x+y)̄=x̄ȳ (De Morgan). OR followed by NOT.',
+     '**XOR gate**: output=x⊕y=x̄y+xȳ. TRUE when inputs DIFFER. FALSE when same.',
+     '**Half adder**: Sum=x⊕y (XOR), Carry=xy (AND). Adds 2 single bits.',
+     '**Full adder**: Also takes carry-in (cin). Sum=x⊕y⊕cin, Cout=xy+cin(x⊕y).',
+     '**Building circuits**: Work inside-out. Handle brackets and complement bars first.',
+    ],
+    facts:['NAND=(xy)̄=x̄+ȳ','NOR=(x+y)̄=x̄ȳ','XOR: 1 only when inputs DIFFER','Half adder: Sum=XOR, Carry=AND','Full adder: adds carry-in bit','NAND/NOR alone are functionally complete'],
+    examples:[
+     { title:'Build circuit for (x+ȳ)x',
+       prob:'Construct circuit using inverters, AND gates, OR gates.',
+       steps:['Step 1: ȳ — send y through INVERTER','Step 2: x+ȳ — send x and ȳ through OR gate','Step 3: (x+ȳ)x — send OR output and x through AND gate'],
+       ans:'1 inverter + 1 OR gate + 1 AND gate.' },
+     { title:'Build circuit for xyz+x̄ȳz̄',
+       prob:'Design the circuit.',
+       steps:['Inverters: x→x̄, y→ȳ, z→z̄','AND gate 1: x,y,z → xyz','AND gate 2: x̄,ȳ,z̄ → x̄ȳz̄','OR gate: xyz+x̄ȳz̄'],
+       ans:'3 inverters + two 3-input AND gates + one OR gate.' },
+     { title:'Full adder calculation',
+       prob:'Add x=1, y=1, cin=1 using full adder.',
+       steps:['Sum=x⊕y⊕cin=1⊕1⊕1: first 1⊕1=0, then 0⊕1=1. Sum=1','Cout=xy+cin(x⊕y)=1·1+1·(1⊕1)=1+1·0=1+0=1','So 1+1+1=11₂ (3 in decimal)'],
+       ans:'Sum=1, Carry-out=1 (binary 11)' },
+    ],
+    quiz:[
+     { q:'NAND(1,1)=?',opts:['1','0','Undefined','Same as input'],c:1,exp:'NAND(1,1)=(1·1)̄=1̄=0.' },
+     { q:'XOR output is 1 when:',opts:['Both=1','Both=0','Inputs DIFFER','At least one=1'],c:2,exp:'XOR=1 exactly when inputs are different (0,1 or 1,0).' },
+     { q:'Half adder with x=1, y=1: Sum and Carry?',opts:['Sum=1,C=0','Sum=0,C=1','Sum=1,C=1','Sum=0,C=0'],c:1,exp:'Sum=1⊕1=0 (same→XOR=0). Carry=1·1=1.' },
+     { q:'Circuit for x̄+y needs:',opts:['0 inv, 1 OR, 0 AND','1 inv, 1 OR, 0 AND','1 inv, 0 OR, 1 AND','2 inv, 1 OR, 0 AND'],c:1,exp:'1 inverter (x→x̄) + 1 OR gate (x̄,y→x̄+y).' },
+     { q:'NOR(0,0)=?',opts:['1','0','Same as OR','Undefined'],c:0,exp:'NOR(0,0)=(0+0)̄=0̄=1. NOR is TRUE only when BOTH inputs are 0.' },
+    ]
+   },
+   {
+    id:'kmap', title:'12.4 K-map Minimization & Quine–McCluskey',
+    theory:[
+     '**Why minimize**: Fewer terms = fewer gates = cheaper, faster circuits.',
+     '**Karnaugh map (K-map)**: Grid of 2ⁿ cells arranged so adjacent cells differ by EXACTLY ONE variable. Place 1 in cells where F=1.',
+     '**K-map 2 variables**: 2×2 grid. Rows: x, x̄. Columns: y, ȳ.',
+     '**K-map 3 variables**: 2×4 grid. Columns in GRAY CODE order: yz, ȳz, ȳz̄, yz̄ (NOT plain binary!).',
+     '**Grouping rules**: Group sizes must be powers of 2 (1,2,4,8…). Rectangles only. Edges wrap around. BIGGER groups → simpler terms.',
+     '**Effect of groups**: Group of 2→eliminate 1 variable. Group of 4→eliminate 2 variables.',
+     '**Quine–McCluskey**: Systematic table-based method. Group minterms by weight (number of 1s). Compare adjacent-weight pairs. Combine if they differ in exactly 1 bit. Repeat until no more combinations.',
+    ],
+    facts:['Adjacent cells differ by exactly 1 bit','Edges wrap around (top↔bottom, left↔right)','Group sizes: 1,2,4,8... (powers of 2)','Group of 2: eliminate 1 var','Group of 4: eliminate 2 vars','Use GRAY CODE for column labels (00,01,11,10)'],
+    examples:[
+     { title:'K-map for F(x,y,z)=(x+y)z — Tutorial Q5(c)',
+       prob:'Minimize (x+y)z using K-map.',
+       steps:['Expand: (x+y)z=xz+yz','Full minterms: xz=xyz+xȳz, yz=xyz+x̄yz','SOP (remove duplicate xyz): xyz+xȳz+x̄yz','Plot K-map: 1s at xyz,xȳz,x̄yz','Group 1: xyz & xȳz (same x,z; y varies)→xz','Group 2: xyz & x̄yz (same y,z; x varies)→yz','Minimized: F=xz+yz'],
+       ans:'Minimized: F(x,y,z)=xz+yz' },
+     { title:'Tutorial Q9: Read three K-maps',
+       prob:'Maps (a),(b),(c) — 2-variable K-maps with given 1-cells.',
+       steps:['(a) 1s at xy,x̄y,x̄ȳ: Group xy+x̄y=y; Group x̄y+x̄ȳ=x̄. Result: x̄+y','(b) 1s at xy,xȳ: Group in same x-row → x. Result: x','(c) All 4 cells=1: Group of 4 → eliminate both variables. Result: 1'],
+       ans:'(a)x̄+y  (b)x  (c)1' },
+     { title:'Tutorial Q10: Draw K-maps',
+       prob:'Draw K-maps for (a)xȳ and (b)xy+x̄ȳ.',
+       steps:['(a) xȳ is one minterm: one 1 at cell (x-row, ȳ-column). Other 3 cells=0.','(b) xy+x̄ȳ: two 1s at (x,y) and (x̄,ȳ). These are DIAGONAL — not adjacent. Cannot group.','Note: (b) is already minimal — no simplification possible.'],
+       ans:'(a) one 1-cell at (x,ȳ). (b) diagonal 1-cells, already minimal.' },
+    ],
+    quiz:[
+     { q:'K-map cells adjacent to x̄y are:',opts:['Only xy','xy and x̄ȳ','Only x̄ȳ','xy and xȳ'],c:1,exp:'x̄y is adjacent to xy (same column, different row) and x̄ȳ (same row, different column).' },
+     { q:'A group of 4 on a 3-variable K-map eliminates how many variables?',opts:['1','2','3','0'],c:1,exp:'Group of 2²=4 in 3-variable map eliminates 2 variables, leaving 1.' },
+     { q:'Why GRAY CODE (00,01,11,10) not binary (00,01,10,11) for K-map columns?',opts:['Gray is faster','Adjacent cells must differ by 1 variable','Binary skips values','Gray uses fewer bits'],c:1,exp:'K-maps need adjacent cells to differ by exactly 1 bit. Binary 01→10 changes 2 bits, breaking adjacency.' },
+     { q:'Minimize xy+x̄y.',opts:['x','y','xy','x+y'],c:1,exp:'xy and x̄y: same column y, different rows. Adjacent — group gives y.' },
+     { q:'All 4 cells of a 2-variable K-map are 1. Result?',opts:['F=xy','F=x+y','F=x̄+ȳ','F=1'],c:3,exp:'Group of 4 covers everything, eliminating both variables. F=1 (constant true).' },
+    ]
+   },
+  ]
+ },
+];
+
+// ── HELPER: render **bold** text ──────────────────────────────────────────────
+function Bold({text}) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((p,i)=>
+    p.startsWith('**')
+    ? <strong key={i} className="text-blue-300 font-semibold">{p.slice(2,-2)}</strong>
+    : <span key={i}>{p}</span>
+  );
+}
+
+// ── QUIZ COMPONENT ────────────────────────────────────────────────────────────
+const MOTIVATIONS_OK = ['🔥 Excellent!','✨ Perfect!','🎯 Exactly right!','💪 Brilliant!','⚡ Outstanding!','🌟 Correct!'];
+const MOTIVATIONS_NO = ['💡 Here\'s why:','🤔 Common mistake:','📚 The key insight:','🔍 Let\'s look:','💬 Fix:'];
+
+function Quiz({questions, color}) {
+  const [states, setStates] = useState(questions.map(()=>({sel:null,done:false,ok:false})));
+  const [reset, setReset] = useState(0);
+
+  useEffect(()=>{
+    setStates(questions.map(()=>({sel:null,done:false,ok:false})));
+  },[reset]);
+
+  const answered = states.filter(s=>s.done).length;
+  const score = states.filter(s=>s.ok).length;
+  const allDone = answered===questions.length;
+
+  const sel = (qi,oi)=>{
+    if(states[qi].done) return;
+    setStates(prev=>{const n=[...prev];n[qi]={...n[qi],sel:oi};return n;});
+  };
+  const check = (qi)=>{
+    if(states[qi].sel===null||states[qi].done) return;
+    const ok = states[qi].sel===questions[qi].c;
+    setStates(prev=>{const n=[...prev];n[qi]={...n[qi],done:true,ok};return n;});
+  };
+
+  const pct = questions.length>0 ? Math.round(score/questions.length*100) : 0;
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="text-lg font-semibold text-slate-300 flex items-center gap-2">
+          <span>🧪</span> Practice Quiz
+        </h4>
+        <div className="flex items-center gap-3">
+          {allDone && <button onClick={()=>setReset(r=>r+1)} className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg transition-colors">🔄 Retry</button>}
+          <span className="text-sm text-slate-500">{answered}/{questions.length}</span>
+        </div>
+      </div>
+
+      <div className="h-1.5 bg-slate-800 rounded-full mb-6 overflow-hidden">
+        <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-500"
+          style={{width:`${questions.length?answered/questions.length*100:0}%`}} />
+      </div>
+
+      {allDone && (
+        <div className={`mb-6 rounded-2xl p-5 border text-center ${pct>=80?'bg-green-900/30 border-green-600/40':pct>=50?'bg-yellow-900/30 border-yellow-600/40':'bg-blue-900/30 border-blue-600/40'}`}>
+          <div className="text-2xl mb-1">{pct>=80?'🏆':pct>=50?'👍':'📚'}</div>
+          <div className="font-bold text-white text-lg">{pct>=80?'Excellent!':pct>=50?'Good Progress!':'Keep Practising!'}</div>
+          <div className="text-slate-300 text-sm mt-1">Score: {score}/{questions.length} ({pct}%)</div>
+        </div>
+      )}
+
+      <div className="space-y-5">
+        {questions.map((q,qi)=>{
+          const st=states[qi];
+          const mot = st.done ? (st.ok ? MOTIVATIONS_OK[qi%6] : MOTIVATIONS_NO[qi%5]) : null;
+          return (
+            <div key={qi} className={`rounded-2xl border overflow-hidden ${st.done?(st.ok?'border-green-600/50 bg-green-900/10':'border-red-600/50 bg-red-900/10'):'border-slate-700 bg-slate-800/40'}`}>
+              <div className="p-4">
+                <div className="flex gap-3 mb-3">
+                  <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${st.done?(st.ok?'bg-green-600 text-white':'bg-red-600 text-white'):'bg-slate-700 text-slate-300'}`}>
+                    {st.done?(st.ok?'✓':'✗'):qi+1}
+                  </div>
+                  <p className="text-slate-100 font-medium leading-relaxed">{q.q}</p>
+                </div>
+                <div className="grid gap-2 ml-10">
+                  {q.opts.map((opt,oi)=>{
+                    let cls='w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-all border ';
+                    if(!st.done) cls+=st.sel===oi?'bg-blue-600/30 border-blue-500 text-blue-200':'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700 hover:border-slate-500 cursor-pointer';
+                    else if(q.c===oi) cls+='bg-green-700/30 border-green-500 text-green-200';
+                    else if(st.sel===oi) cls+='bg-red-700/30 border-red-500 text-red-200 line-through';
+                    else cls+='bg-slate-700/20 border-slate-700 text-slate-500';
+                    return(
+                      <button key={oi} className={cls} onClick={()=>sel(qi,oi)} disabled={st.done}>
+                        <span className="font-bold text-slate-400 mr-1">{String.fromCharCode(65+oi)}.</span>{opt}
+                        {st.done&&q.c===oi&&<span className="ml-1 text-green-400">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {!st.done&&(
+                  <div className="mt-3 ml-10">
+                    <button onClick={()=>check(qi)} disabled={st.sel===null}
+                      className={`px-4 py-1.5 rounded-xl text-sm font-semibold transition-all ${st.sel!==null?'bg-blue-600 hover:bg-blue-500 text-white cursor-pointer':'bg-slate-700 text-slate-500 cursor-not-allowed'}`}>
+                      Check →
+                    </button>
+                  </div>
+                )}
+              </div>
+              {st.done&&(
+                <div className={`border-t px-4 py-3 ${st.ok?'bg-green-900/20 border-green-700/30':'bg-blue-900/20 border-blue-700/30'}`}>
+                  <div className="flex gap-2 items-start">
+                    <span className="text-base mt-0.5">{st.ok?'🎯':'💡'}</span>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-300 mb-0.5">{mot}</div>
+                      <p className="text-sm text-slate-300 leading-relaxed">{q.exp}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {allDone&&(
+        <div className="mt-4 bg-slate-800/50 rounded-2xl p-5 border border-slate-700 text-center">
+          <div className="text-3xl font-extrabold text-white mb-1">{score}/{questions.length}</div>
+          <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-3">
+            <div className={`h-full rounded-full ${pct>=80?'bg-green-500':pct>=60?'bg-yellow-500':'bg-blue-500'}`} style={{width:`${pct}%`}} />
+          </div>
+          <button onClick={()=>setReset(r=>r+1)} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-5 py-2 rounded-xl text-sm transition-colors">🔄 Try Again</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SECTION COMPONENT ─────────────────────────────────────────────────────────
+function Section({sec, topicColor, topicGrad, sIdx}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div id={sec.id} className="mb-6 scroll-mt-4">
+      <button onClick={()=>setOpen(o=>!o)}
+        className="w-full flex items-center justify-between bg-slate-800/60 hover:bg-slate-800 rounded-2xl p-5 border border-slate-700 transition-all group text-left">
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${topicGrad} flex items-center justify-center text-white text-xs font-bold`}>{sIdx+1}</div>
+          <span className="font-semibold text-slate-200 group-hover:text-white transition-colors">{sec.title}</span>
+          <span className="hidden sm:inline-flex gap-2 ml-2">
+            <span className="text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full">{sec.examples.length} examples</span>
+            <span className="text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full">{sec.quiz.length} quiz</span>
+          </span>
+        </div>
+        <svg className={`w-5 h-5 text-slate-400 transition-transform ${open?'rotate-180':''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+
+      {open&&(
+        <div className="mt-3 fade-in">
+          {/* Theory */}
+          <div className="mb-6">
+            <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
+              <span>📖</span> Theory & Definitions
+            </h4>
+            <div className="space-y-3">
+              {sec.theory.map((t,i)=>(
+                <div key={i} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 text-slate-300 leading-relaxed">
+                  <Bold text={t}/>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Key Facts */}
+          <div className="mb-6">
+            <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
+              <span>💡</span> Key Facts (Exam Quick Revision)
+            </h4>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {sec.facts.map((f,i)=>(
+                <div key={i} className="flex items-start gap-2 bg-blue-900/20 border border-blue-800/30 rounded-xl p-3">
+                  <span className="text-blue-400 font-bold">✓</span>
+                  <code className="text-sm text-blue-200 font-mono">{f}</code>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Examples */}
+          <div className="mb-6">
+            <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
+              <span>✏️</span> Worked Examples (Step-by-Step)
+            </h4>
+            <div className="space-y-4">
+              {sec.examples.map((ex,ei)=>(
+                <div key={ei} className="rounded-2xl overflow-hidden border border-slate-700">
+                  <div className="bg-amber-900/30 border-b border-amber-700/30 px-4 py-2.5 flex items-center gap-2">
+                    <span className="bg-amber-500 text-amber-950 font-bold text-xs px-2 py-0.5 rounded-full">Example {sIdx+1}.{ei+1}</span>
+                    <span className="font-semibold text-amber-200 text-sm">{ex.title}</span>
+                  </div>
+                  <div className="bg-slate-800/50 px-4 py-3 border-b border-slate-700">
+                    <div className="text-xs uppercase text-slate-500 mb-1 tracking-wider">Question</div>
+                    <p className="text-slate-200 text-sm">{ex.prob}</p>
+                  </div>
+                  <div className="bg-slate-800/30 px-4 py-3 border-b border-slate-700">
+                    <div className="text-xs uppercase text-slate-500 mb-2 tracking-wider">Steps</div>
+                    <div className="space-y-1.5">
+                      {ex.steps.map((s,si)=>(
+                        <div key={si} className="flex gap-2 items-start">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold mt-0.5">{si+1}</span>
+                          <code className="text-sm text-slate-300 font-mono bg-slate-700/40 rounded px-2 py-1 flex-1 leading-relaxed">{s}</code>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-green-900/20 px-4 py-3">
+                    <div className="text-xs uppercase text-green-500 mb-1 tracking-wider">✅ Answer</div>
+                    <p className="text-green-300 font-medium text-sm">{ex.ans}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quiz */}
+          <Quiz questions={sec.quiz} color={topicColor}/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── TOPIC PAGE ────────────────────────────────────────────────────────────────
+function TopicPage({topic, onBack}) {
+  useEffect(()=>{window.scrollTo(0,0);},[topic.id]);
+  return(
+    <div>
+      <div className={`bg-gradient-to-r ${topic.grad} py-10 px-4`}>
+        <div className="max-w-3xl mx-auto">
+          <button onClick={onBack} className="inline-flex items-center gap-1 text-white/70 hover:text-white text-sm mb-4 transition-colors">
+            ← All Topics
+          </button>
+          <div className="flex items-center gap-4">
+            <span className="text-5xl">{topic.icon}</span>
+            <div>
+              <div className="text-white/70 text-xs font-medium">{topic.ch}</div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">{topic.title}</h1>
+              <p className="text-white/80 text-sm mt-1">{topic.desc}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-5">
+            {topic.sections.map(s=>(
+              <a key={s.id} href={`#${s.id}`} className="bg-white/20 hover:bg-white/30 text-white text-xs px-3 py-1 rounded-full transition-colors">{s.title}</a>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        {topic.sections.map((sec,si)=>(
+          <Section key={sec.id} sec={sec} topicColor={topic.bg} topicGrad={topic.grad} sIdx={si}/>
+        ))}
+        <div className="mt-8 pt-6 border-t border-slate-800 text-center">
+          <button onClick={onBack} className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-6 py-3 rounded-xl transition-colors font-medium">
+            ← Back to All Topics
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── HOME PAGE ─────────────────────────────────────────────────────────────────
+function HomePage({onTopic}) {
+  const totalQ = TOPICS.reduce((a,t)=>a+t.sections.reduce((b,s)=>b+s.quiz.length,0),0);
+  const totalE = TOPICS.reduce((a,t)=>a+t.sections.reduce((b,s)=>b+s.examples.length,0),0);
+  const totalS = TOPICS.reduce((a,t)=>a+t.sections.length,0);
+
+  return(
+    <div>
+      {/* Hero */}
+      <header className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 pt-16 pb-20">
+        <div className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{background:'radial-gradient(circle at 20% 50%,#1d4ed8,transparent 50%),radial-gradient(circle at 80% 20%,#7c3aed,transparent 50%)'}}/>
+        <div className="relative max-w-4xl mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-500/30 rounded-full px-4 py-2 text-blue-300 text-sm mb-6">
+            🎓 IAA Arusha · BCS Year 1 · CSU 07212 / ITU 07210 / CYU 07102
+          </div>
+          <h1 className="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-white via-blue-200 to-cyan-300 bg-clip-text text-transparent mb-4">
+            Discrete Mathematics
+          </h1>
+          <p className="text-xl text-blue-200 font-light mb-2">A+ Study Hub — Based on Rosen 7th Edition</p>
+          <p className="text-slate-400 text-sm max-w-xl mx-auto mb-8">
+            Kila topic imefunzwa kwa njia rahisi, mifano halisi, na maswali ya kutosha. Fuata mpango huu utafaulu kwa A+.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 mb-8">
+            {[{n:totalS,l:'Sections',c:'blue'},{n:totalE,l:'Worked Examples',c:'purple'},{n:totalQ,l:'Quiz Questions',c:'green'},{n:'A+',l:'Your Goal',c:'orange'}].map(({n,l,c})=>(
+              <div key={l} className={`bg-${c}-500/20 rounded-2xl px-5 py-3 border border-${c}-500/30`}>
+                <div className={`text-2xl font-bold text-${c}-300`}>{n}</div>
+                <div className="text-xs text-slate-400">{l}</div>
+              </div>
+            ))}
+          </div>
+          <button onClick={()=>onTopic(TOPICS[0])}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-base px-7 py-3.5 rounded-2xl transition-all hover:scale-105">
+            🚀 Start Learning Now →
+          </button>
+        </div>
+      </header>
+
+      {/* How it works */}
+      <section className="py-12 bg-slate-900/50">
+        <div className="max-w-4xl mx-auto px-4">
+          <h2 className="text-xl font-bold text-center text-slate-300 mb-8">📚 Jinsi Unavyofunza — How It Teaches</h2>
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              {i:'📖',t:'Theory First',d:'Every concept in plain English. No confusion, no skipping steps.'},
+              {i:'✏️',t:'Worked Examples',d:'Every example solved step-by-step like your lecturer does it.'},
+              {i:'💡',t:'Key Facts',d:'Instant-recall summary. Perfect for last-minute exam review.'},
+              {i:'🧪',t:'Quiz to Master',d:'Psychology-based questions. Every wrong answer fully explained.'},
+            ].map(({i,t,d})=>(
+              <div key={t} className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700 text-center">
+                <div className="text-3xl mb-2">{i}</div>
+                <h3 className="font-bold text-slate-200 text-sm mb-1">{t}</h3>
+                <p className="text-xs text-slate-400">{d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Topics */}
+      <section className="py-12">
+        <div className="max-w-4xl mx-auto px-4">
+          <h2 className="text-2xl font-bold text-center text-white mb-2">📋 Table of Contents</h2>
+          <p className="text-center text-slate-500 text-sm mb-8">Masomo yote kutoka notes za mwalimu na Rosen 7th Edition</p>
+          <div className="space-y-5">
+            {TOPICS.map(t=>(
+              <div key={t.id} className="bg-slate-800/60 rounded-3xl overflow-hidden border border-slate-700 hover:border-slate-500 transition-all">
+                <div className={`bg-gradient-to-r ${t.grad} p-5`}>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-3xl block mb-1">{t.icon}</span>
+                      <div className="text-white/60 text-xs">{t.ch}</div>
+                      <h3 className="text-xl font-bold text-white">{t.title}</h3>
+                      <p className="text-white/75 text-sm mt-1 max-w-lg">{t.desc}</p>
+                    </div>
+                    <div className="hidden md:flex flex-col items-end gap-1 ml-4 flex-shrink-0">
+                      <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full">{t.sections.length} sections</span>
+                      <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full">{t.sections.reduce((a,s)=>a+s.quiz.length,0)} questions</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="grid sm:grid-cols-2 gap-2 mb-3">
+                    {t.sections.map(s=>(
+                      <button key={s.id} onClick={()=>onTopic(t)}
+                        className="flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 rounded-xl p-2.5 transition-colors group text-left">
+                        <div className="w-7 h-7 rounded-lg bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-colors flex-shrink-0">
+                          {s.quiz.length}Q
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium text-slate-200 group-hover:text-white truncate">{s.title}</div>
+                          <div className="text-xs text-slate-500">{s.examples.length} examples</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={()=>onTopic(t)}
+                    className={`w-full py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r ${t.grad} hover:opacity-90 text-sm transition-opacity`}>
+                    Study {t.title} →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-slate-800 py-8 text-center text-slate-500 text-xs">
+        <p>🏫 Institute of Accountancy Arusha (IAA) · BCS Year 1 · Discrete Mathematics</p>
+        <p className="mt-1">Rosen's Discrete Mathematics 7th Edition · Facilitator: John Francis</p>
+      </footer>
+    </div>
+  );
+}
+
+// ── ROOT APP ──────────────────────────────────────────────────────────────────
+function App() {
+  const [currentTopic, setCurrentTopic] = useState(null);
+  return currentTopic
+    ? <TopicPage topic={currentTopic} onBack={()=>setCurrentTopic(null)}/>
+    : <HomePage onTopic={setCurrentTopic}/>;
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>
